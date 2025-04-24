@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Catphish – Scan Fake Instagram Profiles</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #e0eaff, #fdfbff);
+      color: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    .container {
+      background: #ffffff;
+      padding: 2.5rem;
+      border-radius: 1.5rem;
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      color: #2b2b40;
+    }
+
+    p {
+      font-size: 0.95rem;
+      color: #666;
+      margin-bottom: 2rem;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      border: 1px solid #ccc;
+      border-radius: 0.75rem;
+      margin-bottom: 1.5rem;
+      font-size: 1rem;
+      transition: border 0.2s;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #4f46e5;
+    }
+
+    button {
+      background-color: #4f46e5;
+      color: white;
+      border: none;
+      padding: 0.8rem 1.2rem;
+      font-size: 1rem;
+      border-radius: 0.75rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #4338ca;
+    }
+
+    .result {
+      margin-top: 2rem;
+      padding: 1.2rem;
+      border-radius: 1rem;
+      background-color: #f3f4f6;
+      font-size: 1rem;
+      color: #444;
+      display: none; /* you can set this to "block" when JS is added */
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🐟 Catphish</h1>
+    <p>Scan an Instagram profile and check its fake probability.</p>
+    <input type="text" placeholder="Enter Instagram profile URL..." />
+    <a href="detection.html">
+      <button>Scan Profile</button>
+    </a>
+    <div class="result">
+      <strong>Fake Score:</strong> 7/10 – Likely Suspicious
+    </div>
+  </div>
+</body>
+</html>
+
