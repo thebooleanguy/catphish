@@ -72,30 +72,16 @@
     button:hover {
       background-color: #4338ca;
     }
-
-    .result {
-      margin-top: 2rem;
-      padding: 1.2rem;
-      border-radius: 1rem;
-      background-color: #f3f4f6;
-      font-size: 1rem;
-      color: #444;
-      display: none; /* you can set this to "block" when JS is added */
-    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>🐟 Catphish</h1>
     <p>Scan an Instagram profile and check its fake probability.</p>
-    <input type="text" placeholder="Enter Instagram profile URL..." />
-    <a href="detection.html">
-      <button>Scan Profile</button>
-    </a>
-    <div class="result">
-      <strong>Fake Score:</strong> 7/10 – Likely Suspicious
-    </div>
+    <form action="/detection" method="get">
+      <input type="text" name="username" placeholder="Enter Instagram profile username..." required />
+      <button type="submit">Scan Profile</button>
+    </form>
   </div>
 </body>
 </html>
-

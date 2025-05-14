@@ -64,64 +64,79 @@ def reverse_image_search(image_path):
 
 # --- Step 3: Profile analysis and scoring ---
 def analyze_profile(username):
+    profile_data = {}
+    score = 0
+    max_score = 10  # Adjusted total based on refined logic
+    breakdown = []
+
     try:
         profile = instaloader.Profile.from_username(L.context, username)
-        score = 0
-        max_score = 8
+        profile_data = {
+            "username": profile.username,
+            "full_name": profile.full_name,
+            "bio": profile.biography,
+            "followers": profile.followers,
+            "following": profile.followees,
+            "posts": profile.mediacount,
+            "is_private": profile.is_private,
+        }
 
-        print(f"🔍 Username: {profile.username}")
-        print(f"👤 Full Name: {profile.full_name}")
-        print(f"📜 Bio: {profile.biography}")
-        print(f"🌐 Website: {profile.external_url}")
-        print(f"🖼️ Profile Pic URL: {profile.profile_pic_url}")
-        print(f"📝 Posts: {profile.mediacount}, 👥 Followers: {profile.followers}, ➡️ Following: {profile.followees}")
-        print(f"🔐 Private Account: {profile.is_private}")
-        print(f"🏅 Verified: {profile.is_verified}")
-
-        # Bio heuristics
-        if profile.biography:
+        # --- Bio analysis ---
+        if not profile.biography:
+            breakdown.append(("📝 Empty bio", "+1"))
+            score += 1
+        else:
             blob = TextBlob(profile.biography)
             try:
                 lang = blob.detect_language()
                 if lang == 'en':
-                    if len(profile.biography) < 5 or any(char in profile.biography for char in "❤️🔥💯😘😍🌹👉👇"):
-                        print("⚠️ Bio has too many symbols/emojis (+1)")
+                    emoji_count = sum(1 for c in profile.biography if c in "❤️🔥💯😘😍🌹👉👇😎😊")
+                    if len(profile.biography) < 5:
+                        breakdown.append(("✏️ Suspiciously short bio", "+1"))
                         score += 1
-            except:
-                print("ℹ️ Language detection skipped.")
-        else:
-            print("⚠️ Bio is empty (+1)")
+                    if emoji_count >= 3:
+                        breakdown.append(("🤖 Too many emojis/symbols", "+1"))
+                        score += 1
+            except Exception:
+                breakdown.append(("🌐 Language detection failed", "+0"))
+
+        # --- Post count ---
+        if profile.mediacount == 0:
+            breakdown.append(("📭 No posts at all", "+2"))
+            score += 2
+        elif profile.mediacount < 3:
+            breakdown.append(("📸 Very low post count", "+1"))
             score += 1
 
-        # Post count
-        if profile.mediacount < 3:
-            print("⚠️ Very low post count (+2)")
-            score += 2
-
-        # Follower/Following ratio
-        if profile.followees != 0:
+        # --- Follower / Following ratio ---
+        if profile.followees > 0:
             ratio = profile.followers / profile.followees
-            print(f"📊 Follower/Following Ratio: {ratio:.2f}")
-            if ratio > 5:
-                print("⚠️ High Follower/Following ratio (+2)")
+            if ratio > 10:
+                breakdown.append(("📈 Unnaturally high follower ratio", "+2"))
                 score += 2
-            elif ratio < 0.2:
-                print("⚠️ Low Follower/Following ratio (+2)")
+            elif ratio < 0.1:
+                breakdown.append(("📉 Very low follower ratio", "+2"))
                 score += 2
+            elif ratio < 0.5 or ratio > 3:
+                breakdown.append(("⚠️ Unbalanced follower ratio", "+1"))
+                score += 1
         else:
-            print("⚠️ Followees count is 0 (+2)")
+            breakdown.append(("🚩 Follows no one", "+2"))
             score += 2
 
-        # Private account
+        # --- Privacy status ---
         if profile.is_private:
-            print("⚠️ Account is private (+1)")
+            breakdown.append(("🔐 Private profile", "+1"))
             score += 1
 
-        percentage = (score / max_score) * 100
-        print(f"\n💯 Suspicion Score: {score}/{max_score}  |  {percentage:.1f}% suspicious")
+        # Final percentage
+        percentage = int((score / max_score) * 100)
 
+        return profile_data, breakdown, score, max_score, percentage
     except Exception as e:
         print(f"❌ Error analyzing profile: {e}")
+        return {}, [], 0, max_score, 0
+
 
 # --- Run everything together ---
 if __name__ == "__main__":

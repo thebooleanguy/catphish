@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Catphish – Results</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #f3f4fc, #e7ebff);
+      color: #333;
+      padding: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .card {
+      background: #fff;
+      padding: 2.5rem;
+      border-radius: 1.5rem;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
+      max-width: 600px;
+      width: 100%;
+    }
+    h1 {
+      text-align: center;
+      font-size: 2rem;
+    }
+    .score, .percentage {
+      text-align: center;
+      margin-top: 1rem;
+    }
+    .score { font-size: 1.5rem; color: #4f46e5; }
+    .percentage { font-size: 2.5rem; color: #dc2626; }
+    .verdict {
+      text-align: center;
+      margin: 1rem 0;
+      font-weight: 500;
+    }
+    .breakdown {
+      margin-top: 1rem;
+    }
+    .attribute {
+      background: #f9fafb;
+      padding: 1rem;
+      border-radius: 0.75rem;
+      border-left: 4px solid #4f46e5;
+      margin-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+    }
+    .back-btn {
+      text-align: center;
+      margin-top: 2rem;
+    }
+    a {
+      color: #4f46e5;
+      text-decoration: none;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🐟 Catphish Results for <i>{{ username }}</i></h1>
+    <div class="score">Score: {{ score }}/{{ max_score }}</div>
+    <div class="percentage">{{ percentage }}%</div>
+    <div class="verdict">
+      {% if percentage > 70 %}
+        🚨 This profile appears <strong>highly suspicious</strong>.
+      {% elif percentage > 40 %}
+        ⚠️ This profile is <strong>somewhat suspicious</strong>.
+      {% else %}
+        ✅ This profile looks <strong>mostly normal</strong>.
+      {% endif %}
+    </div>
+
+    <div class="breakdown">
+      <div class="attribute">
+        <span>🔍 Reverse Image Search</span>
+        <span>{{ reverse_result.status }}</span>
+      </div>
+      {% for item in breakdown %}
+        <div class="attribute">
+          <span>{{ item[0] }}</span>
+          <span>{{ item[1] }}</span>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="back-btn">
+      <a href="/">← Scan Another Profile</a>
+    </div>
+  </div>
+</body>
+</html>
