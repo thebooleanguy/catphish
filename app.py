@@ -1,6 +1,14 @@
 from flask import Flask, render_template, request, jsonify, url_for, send_from_directory
 import instaloader
+import webbrowser
 import threading
+import platform
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import WebDriverException
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
@@ -20,20 +28,35 @@ if not os.path.exists(PROFILE_PICS_DIR):
 # --- Reverse image search (run in background thread) ---
 def reverse_image_search(image_path, result_holder):
     try:
-        options = Options()
-        options.add_argument("--headless")
-        driver = webdriver.Firefox(options=options)
-        
+        system = platform.system()
+        driver = None
+
+        if system == "Windows":
+            chrome_options = ChromeOptions()
+            chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--no-sandbox")
+            driver = webdriver.Chrome(options=chrome_options)
+        elif system == "Linux":
+            firefox_options = FirefoxOptions()
+            firefox_options.add_argument("--headless")
+            driver = webdriver.Firefox(options=firefox_options)
+        else:
+            raise Exception(f"Unsupported OS: {system}")
+
         driver.get("https://images.google.com")
         sleep(3)
+
         result = {"match_found": False, "status": "Could not determine", "score": 0}
-        
+
+        # Click "Search by image"
         driver.find_element(By.XPATH, "//div[@aria-label='Search by image']").click()
         sleep(2)
+
         upload_input = driver.find_element(By.XPATH, "//input[@type='file']")
         upload_input.send_keys(image_path)
         sleep(7)
-        
+
         try:
             match_div = driver.find_element(By.XPATH, "/html/body/div[3]/div/div[4]/div/div/div/div/div[1]/div/div/div/div/div[1]/div[1]/div[5]/a/div")
             if match_div:
@@ -45,13 +68,23 @@ def reverse_image_search(image_path, result_holder):
                     result.update({"status": "✅ No image matches found.", "score": 0})
             except:
                 result["status"] = "ℹ️ Could not confirm match result."
-        
+
         driver.quit()
         result_holder["result"] = result
-        
+
+    except WebDriverException as e:
+        print("❌ Selenium WebDriver error:", e)
+        result_holder["result"] = {"match_found": False, "status": f"Selenium error: {e}", "score": 0}
     except Exception as e:
         print("❌ Reverse image search error:", e)
-        result_holder["result"] = {"match_found": False, "status": "Reverse search failed", "score": 0}
+        result_holder["result"] = {"match_found": False, "status": f"Error: {e}", "score": 0}
+    finally:
+        try:
+            if driver:
+                driver.quit()
+        except:
+            pass
+
 
 # --- Profile analysis ---
 def analyze_profile(username):
@@ -242,4 +275,10 @@ def detection():
     return render_detection(username)
 
 if __name__ == '__main__':
+    # Open browser in a separate thread after small delay
+    def open_browser():
+        sleep(1)
+        webbrowser.open("http://127.0.0.1:5000")
+
+    threading.Thread(target=open_browser).start()
     app.run(debug=True)
