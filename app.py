@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, url_for, send_from_directory
 import instaloader
 import threading
 from selenium import webdriver
@@ -11,6 +11,11 @@ import shutil
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 L = instaloader.Instaloader()
+
+# Create static profile pics directory if not exists
+PROFILE_PICS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'profile_pics')
+if not os.path.exists(PROFILE_PICS_DIR):
+    os.makedirs(PROFILE_PICS_DIR)
 
 # --- Reverse image search (run in background thread) ---
 def reverse_image_search(image_path, result_holder):
@@ -138,20 +143,27 @@ def analyze_profile(username):
 # --- Download profile picture ---
 def download_profile_pic(username):
     try:
-        # Create temp folder if not exists
-        temp_folder = os.path.join(os.getcwd(), "temp_profiles")
-        if not os.path.exists(temp_folder):
-            os.makedirs(temp_folder)
+        # Create static folder for profile pictures if it doesn't exist
+        if not os.path.exists(PROFILE_PICS_DIR):
+            os.makedirs(PROFILE_PICS_DIR)
+        
+        # Set target file path
+        dest_file = os.path.join(PROFILE_PICS_DIR, f"{username}.jpg")
+        
+        # Check if profile pic already exists
+        if os.path.exists(dest_file):
+            return dest_file
         
         # Download profile picture
-        L.download_profile(username, profile_pic_only=True)
-        folder = os.path.join(os.getcwd(), username)
+        profile = instaloader.Profile.from_username(L.context, username)
+        L.download_profilepic(profile)
         
+        # Find the downloaded file in the username directory
+        folder = os.path.join(os.getcwd(), username)
         if os.path.exists(folder):
             for file in os.listdir(folder):
                 if file.endswith(".jpg"):
                     src_file = os.path.join(folder, file)
-                    dest_file = os.path.join(temp_folder, f"{username}.jpg")
                     shutil.copy2(src_file, dest_file)
                     shutil.rmtree(folder)  # Clean up original download folder
                     return dest_file
@@ -167,6 +179,11 @@ def check_reverse_search():
         return jsonify(result_holder['result'])
     return jsonify({"status": "Processing...", "score": 0})
 
+# --- Serve profile pictures from static folder ---
+@app.route('/static/profile_pics/<filename>')
+def profile_pic(filename):
+    return send_from_directory(PROFILE_PICS_DIR, filename)
+
 # --- Render detection ---
 def render_detection(username):
     app.config['result_holder'] = {}  # Reset result holder
@@ -175,12 +192,18 @@ def render_detection(username):
     # Analyze profile
     score, max_score, percentage, breakdown, profile_data = analyze_profile(username)
     
+    # Download and set profile picture URL
+    profile_pic_path = download_profile_pic(username)
+    if profile_pic_path:
+        # Convert to relative URL path for template
+        profile_pic_url = url_for('static', filename=f'profile_pics/{username}.jpg')
+        profile_data['local_profile_pic'] = profile_pic_url
+    
     # Start reverse image search in background
-    profile_pic = download_profile_pic(username)
     reverse_result = {"status": "Loading reverse image search...", "score": 0}
     
-    if profile_pic:
-        thread = threading.Thread(target=reverse_image_search, args=(profile_pic, result_holder))
+    if profile_pic_path:
+        thread = threading.Thread(target=reverse_image_search, args=(profile_pic_path, result_holder))
         thread.daemon = True
         thread.start()
     else:

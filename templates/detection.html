@@ -213,7 +213,12 @@
     <!-- Profile Information Section -->
     {% if profile_data %}
     <div class="profile-info">
-      <img src="{{ profile_data.profile_pic_url }}" alt="{{ profile_data.username }}" class="profile-pic">
+      <!-- Use local profile pic if available, otherwise use Instagram URL -->
+      {% if profile_data.local_profile_pic %}
+        <img src="{{ profile_data.local_profile_pic }}" alt="{{ profile_data.username }}" class="profile-pic">
+      {% else %}
+        <img src="{{ profile_data.profile_pic_url }}" alt="{{ profile_data.username }}" class="profile-pic">
+      {% endif %}
       <div class="profile-details">
         <div class="username">
           @{{ profile_data.username }}
