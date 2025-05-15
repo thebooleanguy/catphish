@@ -1,87 +1,147 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Catphish – Scan Fake Instagram Profiles</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Catphish – Instagram Fake Profile Detector</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
     body {
-      margin: 0;
       font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, #e0eaff, #fdfbff);
+      background: linear-gradient(135deg, #f3f4fc, #e7ebff);
       color: #333;
+      padding: 2rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 100vh;
+      min-height: 100vh;
+      margin: 0;
     }
-
-    .container {
-      background: #ffffff;
+    .card {
+      background: #fff;
       padding: 2.5rem;
       border-radius: 1.5rem;
-      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
-      max-width: 400px;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
+      max-width: 500px;
       width: 100%;
-      text-align: center;
     }
-
     h1 {
+      text-align: center;
       font-size: 2rem;
-      margin-bottom: 1rem;
-      color: #2b2b40;
+      margin-bottom: 0.5rem;
     }
-
-    p {
-      font-size: 0.95rem;
-      color: #666;
+    .tagline {
+      text-align: center;
+      color: #6b7280;
       margin-bottom: 2rem;
     }
-
-    input[type="text"] {
-      width: 100%;
-      padding: 0.8rem 1rem;
-      border: 1px solid #ccc;
-      border-radius: 0.75rem;
-      margin-bottom: 1.5rem;
-      font-size: 1rem;
-      transition: border 0.2s;
+    .search-form {
+      margin: 2rem 0;
     }
-
-    input[type="text"]:focus {
+    .input-group {
+      display: flex;
+      border-radius: 0.75rem;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    .input-addon {
+      background: #f3f4f6;
+      color: #6b7280;
+      padding: 0.75rem 1rem;
+      font-size: 1.1rem;
+      border: 1px solid #e5e7eb;
+      border-right: none;
+      border-radius: 0.75rem 0 0 0.75rem;
+    }
+    .username-input {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      font-size: 1.1rem;
+      border: 1px solid #e5e7eb;
       outline: none;
+      font-family: 'Inter', sans-serif;
+    }
+    .username-input:focus {
       border-color: #4f46e5;
     }
-
-    button {
-      background-color: #4f46e5;
+    .submit-btn {
+      background: #4f46e5;
       color: white;
       border: none;
-      padding: 0.8rem 1.2rem;
-      font-size: 1rem;
-      border-radius: 0.75rem;
+      padding: 0 1.5rem;
+      font-size: 1.1rem;
+      font-weight: 500;
       cursor: pointer;
-      transition: background-color 0.3s ease;
+      transition: background-color 0.2s;
+      border-radius: 0 0.75rem 0.75rem 0;
+      font-family: 'Inter', sans-serif;
     }
-
-    button:hover {
-      background-color: #4338ca;
+    .submit-btn:hover {
+      background: #4338ca;
+    }
+    .features {
+      margin-top: 2.5rem;
+    }
+    .feature {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 1.25rem;
+    }
+    .feature-icon {
+      margin-right: 1rem;
+      font-size: 1.5rem;
+      min-width: 1.5rem;
+      text-align: center;
+    }
+    .feature-text {
+      font-size: 0.95rem;
+      color: #4b5563;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 0.85rem;
+      color: #6b7280;
     }
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="card">
     <h1>🐟 Catphish</h1>
-    <p>Scan an Instagram profile and check its fake probability.</p>
-    <form action="/detection" method="get">
-      <input type="text" name="username" placeholder="Enter Instagram profile username..." required />
-      <button type="submit">Scan Profile</button>
+    <div class="tagline">Detect fake Instagram profiles instantly</div>
+    
+    <form action="/scan" method="POST" class="search-form">
+      <div class="input-group">
+        <span class="input-addon">@</span>
+        <input type="text" class="username-input" name="username" placeholder="Enter Instagram username" required>
+        <button type="submit" class="submit-btn">Scan</button>
+      </div>
     </form>
+    
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">🔍</div>
+        <div class="feature-text">
+          <strong>Quick Scan:</strong> Analyzes account details and metrics to detect suspicious patterns
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📊</div>
+        <div class="feature-text">
+          <strong>Comprehensive Analysis:</strong> Checks followers, posts, bio, and profile pic
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🛡️</div>
+        <div class="feature-text">
+          <strong>Stay Protected:</strong> Know who you're really talking to online
+        </div>
+      </div>
+    </div>
+    
+    <div class="footer">
+      This tool is for educational purposes only. Use responsibly.
+    </div>
   </div>
 </body>
 </html>

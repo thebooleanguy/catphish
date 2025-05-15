@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Catphish – Results</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
   <style>
     body {
       font-family: 'Inter', sans-serif;
@@ -22,12 +22,13 @@
       padding: 2.5rem;
       border-radius: 1.5rem;
       box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
-      max-width: 600px;
+      max-width: 700px;
       width: 100%;
     }
     h1 {
       text-align: center;
       font-size: 2rem;
+      margin-bottom: 2rem;
     }
     .score, .percentage {
       text-align: center;
@@ -37,8 +38,93 @@
     .percentage { font-size: 2.5rem; color: #dc2626; }
     .verdict {
       text-align: center;
-      margin: 1rem 0;
+      margin: 1rem 0 2rem;
       font-weight: 500;
+      padding: 0.75rem;
+      border-radius: 0.75rem;
+    }
+    .verdict.high {
+      background-color: rgba(220, 38, 38, 0.1);
+      color: #dc2626;
+    }
+    .verdict.medium {
+      background-color: rgba(245, 158, 11, 0.1);
+      color: #d97706;
+    }
+    .verdict.low {
+      background-color: rgba(16, 185, 129, 0.1);
+      color: #059669;
+    }
+    .profile-info {
+      display: flex;
+      align-items: center;
+      margin: 2rem 0;
+      padding: 1.5rem;
+      background: #f9fafb;
+      border-radius: 1rem;
+    }
+    .profile-pic {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid white;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .profile-details {
+      margin-left: 1.5rem;
+      flex: 1;
+    }
+    .username {
+      font-size: 1.3rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+    }
+    .verified-badge {
+      color: #4f46e5;
+      margin-left: 0.5rem;
+    }
+    .fullname {
+      color: #6b7280;
+      font-size: 1.1rem;
+    }
+    .profile-stats {
+      display: flex;
+      margin-top: 1rem;
+    }
+    .stat-item {
+      margin-right: 1.5rem;
+    }
+    .stat-value {
+      font-weight: 600;
+    }
+    .stat-label {
+      font-size: 0.85rem;
+      color: #6b7280;
+    }
+    .private-badge {
+      display: inline-block;
+      background: #f3f4f6;
+      padding: 0.3rem 0.6rem;
+      border-radius: 0.5rem;
+      font-size: 0.8rem;
+      margin-top: 0.5rem;
+    }
+    .bio {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: #f3f4f6;
+      border-radius: 0.75rem;
+      font-size: 0.95rem;
+    }
+    .bio p {
+      margin: 0.5rem 0;
+    }
+    .section-title {
+      margin: 2rem 0 1rem;
+      font-weight: 600;
+      font-size: 1.3rem;
     }
     .breakdown {
       margin-top: 1rem;
@@ -51,6 +137,38 @@
       margin-bottom: 1rem;
       display: flex;
       justify-content: space-between;
+      align-items: center;
+    }
+    .attribute-info {
+      flex: 1;
+    }
+    .attribute-score {
+      font-weight: 600;
+      min-width: 45px;
+      text-align: center;
+      padding: 0.3rem 0.5rem;
+      background: rgba(79, 70, 229, 0.1);
+      border-radius: 0.5rem;
+      color: #4f46e5;
+    }
+    .attribute-description {
+      display: block;
+      font-size: 0.85rem;
+      color: #6b7280;
+      margin-top: 0.3rem;
+    }
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(79, 70, 229, 0.2);
+      border-radius: 50%;
+      border-top-color: #4f46e5;
+      animation: spin 1s ease-in-out infinite;
+      margin-left: 0.5rem;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
     .back-btn {
       text-align: center;
@@ -59,35 +177,107 @@
     a {
       color: #4f46e5;
       text-decoration: none;
-      font-weight: bold;
+      font-weight: 600;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .url-text {
+      word-break: break-all;
+      font-size: 0.9rem;
     }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>🐟 Catphish Results for <i>{{ username }}</i></h1>
+    
+    <!-- Score and Verdict Section -->
     <div class="score">Score: {{ score }}/{{ max_score }}</div>
     <div class="percentage">{{ percentage }}%</div>
-    <div class="verdict">
-      {% if percentage > 70 %}
+    
+    {% if percentage > 70 %}
+      <div class="verdict high">
         🚨 This profile appears <strong>highly suspicious</strong>.
-      {% elif percentage > 40 %}
+      </div>
+    {% elif percentage > 40 %}
+      <div class="verdict medium">
         ⚠️ This profile is <strong>somewhat suspicious</strong>.
-      {% else %}
+      </div>
+    {% else %}
+      <div class="verdict low">
         ✅ This profile looks <strong>mostly normal</strong>.
+      </div>
+    {% endif %}
+    
+    <!-- Profile Information Section -->
+    {% if profile_data %}
+    <div class="profile-info">
+      <img src="{{ profile_data.profile_pic_url }}" alt="{{ profile_data.username }}" class="profile-pic">
+      <div class="profile-details">
+        <div class="username">
+          @{{ profile_data.username }}
+          {% if profile_data.is_verified %}
+          <span class="verified-badge">✓</span>
+          {% endif %}
+        </div>
+        <div class="fullname">{{ profile_data.full_name }}</div>
+        
+        {% if profile_data.is_private %}
+        <div class="private-badge">🔒 Private Account</div>
+        {% endif %}
+        
+        <div class="profile-stats">
+          <div class="stat-item">
+            <span class="stat-value">{{ profile_data.mediacount }}</span>
+            <span class="stat-label"> Posts</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">{{ profile_data.followers }}</span>
+            <span class="stat-label"> Followers</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">{{ profile_data.followees }}</span>
+            <span class="stat-label"> Following</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bio">
+      <strong>Bio:</strong>
+      <p>{{ profile_data.bio }}</p>
+      
+      {% if profile_data.external_url != "None" %}
+      <strong>Website:</strong>
+      <p class="url-text">{{ profile_data.external_url }}</p>
       {% endif %}
     </div>
-
+    {% endif %}
+    
+    <!-- Detection Breakdown Section -->
+    <h2 class="section-title">Detection Factors</h2>
     <div class="breakdown">
       <div class="attribute">
-        <span>🔍 Reverse Image Search</span>
-        <span>{{ reverse_result.status }}</span>
-      </div>
-      {% for item in breakdown %}
-        <div class="attribute">
-          <span>{{ item[0] }}</span>
-          <span>{{ item[1] }}</span>
+        <div class="attribute-info">
+          🔍 Reverse Image Search
+          <span id="reverse-status" class="attribute-description">
+            {{ reverse_result.status }}
+            {% if reverse_result.status == "Loading reverse image search..." %}
+            <span class="loading-spinner"></span>
+            {% endif %}
+          </span>
         </div>
+      </div>
+      
+      {% for item, mark, explanation in breakdown %}
+      <div class="attribute">
+        <div class="attribute-info">
+          {{ item }}
+          <span class="attribute-description">{{ explanation }}</span>
+        </div>
+        <span class="attribute-score">{{ mark }}</span>
+      </div>
       {% endfor %}
     </div>
 
@@ -95,5 +285,26 @@
       <a href="/">← Scan Another Profile</a>
     </div>
   </div>
+  
+  <script>
+    // Check for reverse image search completion
+    function checkReverseSearchStatus() {
+      fetch('/check_reverse_search')
+        .then(response => response.json())
+        .then(data => {
+          const statusElement = document.getElementById('reverse-status');
+          statusElement.textContent = data.status;
+          
+          if (data.status !== "Processing..." && data.status !== "Loading reverse image search...") {
+            // Stop checking when we have a result
+            clearInterval(interval);
+          }
+        })
+        .catch(error => console.error('Error checking reverse search status:', error));
+    }
+
+    // Check every 2 seconds
+    const interval = setInterval(checkReverseSearchStatus, 2000);
+  </script>
 </body>
 </html>
