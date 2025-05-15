@@ -46,73 +46,72 @@ else:
     print("⚠️ ML model not found. Some features will be limited.")
 
 # --- Reverse image search (run in background thread) ---
+# --- Reverse image search (run in background thread) ---
 def reverse_image_search(image_path, result_holder):
     try:
-        system = platform.system()
-        driver = None
+        # Set up Firefox options
+        firefox_options = FirefoxOptions()
+        firefox_options.set_preference("dom.webdriver.enabled", False)
+        firefox_options.set_preference("useAutomationExtension", False)
 
-        if system == "Windows":
-            chrome_options = ChromeOptions()
-            chrome_options.add_argument("--headless")
-            chrome_options.add_argument("--disable-gpu")
-            chrome_options.add_argument("--no-sandbox")
-            driver = webdriver.Chrome(options=chrome_options)
-        elif system == "Linux":
-            firefox_options = FirefoxOptions()
-            firefox_options.add_argument("--headless")
-            driver = webdriver.Firefox(options=firefox_options)
-        else:  # macOS and others
-            chrome_options = ChromeOptions()
-            chrome_options.add_argument("--headless")
-            chrome_options.add_argument("--disable-gpu")
-            chrome_options.add_argument("--no-sandbox")
-            try:
-                driver = webdriver.Chrome(options=chrome_options)
-            except:
-                firefox_options = FirefoxOptions()
-                firefox_options.add_argument("--headless")
-                driver = webdriver.Firefox(options=firefox_options)
+        # Initialize the Firefox driver
+        driver = webdriver.Firefox(options=firefox_options)
+        print("✅ Firefox driver initialized")
 
         driver.get("https://images.google.com")
-        sleep(3)
+        sleep(4)  # Wait for page to load
 
         result = {"match_found": False, "status": "Could not determine", "score": 0}
 
-        # Click "Search by image"
-        driver.find_element(By.XPATH, "//div[@aria-label='Search by image']").click()
-        sleep(2)
-
-        upload_input = driver.find_element(By.XPATH, "//input[@type='file']")
-        upload_input.send_keys(image_path)
-        sleep(7)
-
         try:
-            match_div = driver.find_element(By.XPATH, "/html/body/div[3]/div/div[4]/div/div/div/div/div[1]/div/div/div/div/div[1]/div[1]/div[5]/a/div")
-            if match_div:
-                result.update({"match_found": True, "status": "⚠️ Image match found!", "score": 1})
-        except:
+            # Click the camera icon to open image search
+            camera_icon = driver.find_element(By.CSS_SELECTOR, "div.nDcEnd")
+            camera_icon.click()
+            sleep(2)
+
+            # Find the file upload input
+            upload_input = driver.find_element(By.XPATH, "//input[@type='file']")
+            abs_image_path = os.path.abspath(image_path)
+            upload_input.send_keys(abs_image_path)
+            print("✅ Image uploaded for reverse search")
+            sleep(8)  # Wait for results
+
+            # Scroll to reveal matches
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight / 2);")
+            sleep(2)
+
+            # Check for matches
             try:
-                no_match = driver.find_element(By.XPATH, "//div[contains(text(), 'No other sizes')]")
-                if no_match:
-                    result.update({"status": "✅ No image matches found.", "score": 0})
+                match_div = driver.find_element(By.XPATH, "/html/body/div[3]/div/div[4]/div/div/div/div/div[1]/div/div/div/div/div[1]/div[1]/div[5]/a/div")
+                result.update({"match_found": True, "status": "⚠️ Image match found!", "score": 1})
             except:
-                result["status"] = "ℹ️ Could not confirm match result."
+                try:
+                    no_match = driver.find_element(By.XPATH, "//div[contains(text(), 'No other sizes')]")
+                    result.update({"status": "✅ No image matches found.", "score": 0})
+                except:
+                    result["status"] = "ℹ️ Could not confirm match result."
+
+        except Exception as e:
+            print(f"❌ Error during reverse search: {e}")
+            result["status"] = f"❌ Error during search: {str(e)}"
 
         driver.quit()
         result_holder["result"] = result
+        print(f"🏁 Reverse image search completed: {result}")
 
     except WebDriverException as e:
-        print("❌ Selenium WebDriver error:", e)
+        print(f"❌ Selenium WebDriver error: {e}")
         result_holder["result"] = {"match_found": False, "status": f"Selenium error: {e}", "score": 0}
     except Exception as e:
-        print("❌ Reverse image search error:", e)
+        print(f"❌ Reverse image search error: {e}")
         result_holder["result"] = {"match_found": False, "status": f"Error: {e}", "score": 0}
     finally:
         try:
-            if driver:
+            if 'driver' in locals() and driver:
                 driver.quit()
-        except:
-            pass
+                print("🧹 WebDriver closed")
+        except Exception as e:
+            print(f"❌ Error closing WebDriver: {e}")
 
 # --- Extract features for ML model ---
 def extract_ml_features(profile):
@@ -583,13 +582,33 @@ def setup_app():
 if __name__ == '__main__':
     setup_app()
 
-    # Open browser in a separate thread after small delay
-    def open_browser():
-        sleep(1.5)
-        try:
-            webbrowser.open("http://127.0.0.1:5000")
-        except Exception as e:
-            print(f"Could not open browser: {e}")
+    # Create and start browser opening thread
+    browser_thread = threading.Thread(target=open_browser)
+    browser_thread.daemon = True
+    browser_thread.start()
 
-    threading.Thread(target=open_browser).start()
-    app.run(debug=True)
+    print("🚀 Starting web server...")
+    app.run(debug=True, use_reloader=False)  # Added use_reloader=False to prevent double browser opening
+
+# Open browser in a separate thread after small delay
+def open_browser():
+    sleep(2)  # Increased delay to ensure server is ready
+    url = "http://127.0.0.1:5000"
+    try:
+        # First try the default browser opener
+        webbrowser.open(url)
+        print(f"✅ Browser opened at {url}")
+    except Exception as e:
+        # If that fails, try specific browsers based on platform
+        print(f"Could not open default browser: {e}")
+        try:
+            system = platform.system()
+            if system == "Windows":
+                os.system(f'start {url}')
+            elif system == "Darwin":  # macOS
+                os.system(f'open {url}')
+            elif system == "Linux":
+                os.system(f'xdg-open {url}')
+            print(f"✅ Browser opened using system command at {url}")
+        except Exception as e2:
+            print(f"❌ Failed to open browser: {e2}")
