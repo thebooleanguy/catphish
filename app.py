@@ -46,7 +46,6 @@ else:
     print("⚠️ ML model not found. Some features will be limited.")
 
 # --- Reverse image search (run in background thread) ---
-# --- Reverse image search (run in background thread) ---
 def reverse_image_search(image_path, result_holder):
     try:
         # Set up Firefox options
@@ -54,64 +53,239 @@ def reverse_image_search(image_path, result_holder):
         firefox_options.set_preference("dom.webdriver.enabled", False)
         firefox_options.set_preference("useAutomationExtension", False)
 
+        # Add additional preferences to help avoid detection
+        firefox_options.set_preference('general.useragent.override', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36')
+        firefox_options.set_preference("javascript.enabled", True)
+
         # Initialize the Firefox driver
         driver = webdriver.Firefox(options=firefox_options)
         print("✅ Firefox driver initialized")
 
-        driver.get("https://images.google.com")
-        sleep(4)  # Wait for page to load
+        result = {"match_found": False, "status": "Processing...", "score": 0}
+        result_holder["result"] = result  # Set initial status immediately
 
-        result = {"match_found": False, "status": "Could not determine", "score": 0}
+        # Navigate to Google Images
+        driver.get("https://images.google.com")
+        print("✅ Navigated to Google Images")
+
+        # Wait for page to fully load
+        sleep(3)
 
         try:
-            # Click the camera icon to open image search
-            camera_icon = driver.find_element(By.CSS_SELECTOR, "div.nDcEnd")
-            camera_icon.click()
-            sleep(2)
-
-            # Find the file upload input
-            upload_input = driver.find_element(By.XPATH, "//input[@type='file']")
-            abs_image_path = os.path.abspath(image_path)
-            upload_input.send_keys(abs_image_path)
-            print("✅ Image uploaded for reverse search")
-            sleep(8)  # Wait for results
-
-            # Scroll to reveal matches
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight / 2);")
-            sleep(2)
-
-            # Check for matches
-            try:
-                match_div = driver.find_element(By.XPATH, "/html/body/div[3]/div/div[4]/div/div/div/div/div[1]/div/div/div/div/div[1]/div[1]/div[5]/a/div")
-                result.update({"match_found": True, "status": "⚠️ Image match found!", "score": 1})
-            except:
+            # Check for CAPTCHA (common text in CAPTCHA pages)
+            if "unusual traffic" in driver.page_source.lower() or "captcha" in driver.page_source.lower():
+                print("⚠️ CAPTCHA detected before search")
+                result.update({"status": "⚠️ CAPTCHA detected. Please solve the CAPTCHA in the browser window.", "score": 0})
+                result_holder["result"] = result
+                # Keep browser open for manual CAPTCHA solving
+                # Wait indefinitely until user closes the browser or program exits
                 try:
-                    no_match = driver.find_element(By.XPATH, "//div[contains(text(), 'No other sizes')]")
-                    result.update({"status": "✅ No image matches found.", "score": 0})
+                    # Set a very long implicit wait so we don't consume CPU while waiting
+                    driver.implicitly_wait(86400)  # 24 hours
+                    print("🔍 Browser window left open for manual CAPTCHA solving")
+                    return
                 except:
-                    result["status"] = "ℹ️ Could not confirm match result."
+                    # If there's an error (like user closed the browser), just return
+                    return
 
-        except Exception as e:
-            print(f"❌ Error during reverse search: {e}")
-            result["status"] = f"❌ Error during search: {str(e)}"
+            # Try to find and click the camera icon
+            max_attempts = 3
+            for attempt in range(max_attempts):
+                try:
+                    # Look for camera icon with multiple possible selectors
+                    selectors = [
+                        "div.nDcEnd",
+                        "div.LM8x9c",
+                        "span.z1asCe svg",
+                        "div.dRYYxd",
+                        "//div[@aria-label='Search by image']",
+                        "//span[@aria-label='Search by image']"
+                    ]
+
+                    for selector in selectors:
+                        try:
+                            if selector.startswith("//"):
+                                camera_icon = driver.find_element(By.XPATH, selector)
+                            else:
+                                camera_icon = driver.find_element(By.CSS_SELECTOR, selector)
+                            camera_icon.click()
+                            print(f"✅ Found and clicked camera icon with selector: {selector}")
+                            sleep(2)  # Wait for upload options to appear
+                            break
+                        except:
+                            continue
+                    else:
+                        # If loop completes without breaking, no selector worked
+                        print(f"⚠️ Attempt {attempt+1}: Camera icon not found with standard selectors")
+                        # Try a JavaScript approach
+                        try:
+                            driver.execute_script("""
+                                const buttons = document.querySelectorAll('div[role="button"]');
+                                for (const button of buttons) {
+                                    if (button.innerHTML.includes('svg')) {
+                                        button.click();
+                                        return true;
+                                    }
+                                }
+                                return false;
+                            """)
+                            print("✅ Attempted JavaScript click on camera icon")
+                            sleep(2)
+                        except Exception as js_err:
+                            print(f"❌ JavaScript click failed: {js_err}")
+
+                    # Check if the click was successful by looking for upload options
+                    upload_option_markers = [
+                        "//input[@type='file']",
+                        "//span[contains(text(), 'Upload an image')]",
+                        "//div[contains(text(), 'Upload an image')]"
+                    ]
+
+                    for marker in upload_option_markers:
+                        try:
+                            driver.find_element(By.XPATH, marker)
+                            print("✅ Upload option is visible, proceeding")
+                            break
+                        except:
+                            continue
+                    else:
+                        if attempt < max_attempts - 1:
+                            print(f"⚠️ Upload option not found on attempt {attempt+1}, retrying...")
+                            sleep(2)
+                            continue
+
+                    # If we get here, either we found the upload option or we're on the last attempt
+                    break
+
+                except Exception as e:
+                    print(f"❌ Error on attempt {attempt+1}: {e}")
+                    if attempt < max_attempts - 1:
+                        sleep(2)  # Wait before retrying
+                    else:
+                        raise  # Re-raise on last attempt
+
+            # Now try to find the file upload input and upload the image
+            try:
+                upload_input = None
+                upload_selectors = [
+                    "//input[@type='file']",
+                    "//input[@name='encoded_image']"
+                ]
+
+                for selector in upload_selectors:
+                    try:
+                        upload_input = driver.find_element(By.XPATH, selector)
+                        print(f"✅ Found upload input with selector: {selector}")
+                        break
+                    except:
+                        continue
+
+                if upload_input:
+                    abs_image_path = os.path.abspath(image_path)
+                    upload_input.send_keys(abs_image_path)
+                    print("✅ Image uploaded for reverse search")
+
+                    # Wait for results - important to wait long enough
+                    print("⏳ Waiting for search results...")
+                    for i in range(10):  # Up to 10 seconds in 1-second increments
+                        sleep(1)
+                        # Check if results appear or if a CAPTCHA appeared
+                        if "unusual traffic" in driver.page_source.lower() or "captcha" in driver.page_source.lower():
+                            print("⚠️ CAPTCHA detected after upload")
+                            result.update({"status": "⚠️ CAPTCHA challenge detected. Please solve the CAPTCHA in the browser window.", "score": 0})
+                            result_holder["result"] = result
+                            # Keep browser open for manual CAPTCHA solving
+                            # Wait indefinitely until user closes the browser or program exits
+                            try:
+                                # Set a very long implicit wait so we don't consume CPU while waiting
+                                driver.implicitly_wait(86400)  # 24 hours
+                                print("🔍 Browser window left open for manual CAPTCHA solving")
+                                return
+                            except:
+                                # If there's an error (like user closed the browser), just return
+                                return
+
+                        # Look for signs that results have loaded
+                        result_indicators = [
+                            "//div[contains(text(), 'Find image source')]",
+                            "//div[contains(text(), 'Visually similar images')]",
+                            "//div[contains(text(), 'Pages that include matching images')]",
+                            "//div[contains(text(), 'No other sizes of this image found')]"
+                        ]
+
+                        for indicator in result_indicators:
+                            try:
+                                driver.find_element(By.XPATH, indicator)
+                                print(f"✅ Results detected with indicator: {indicator}")
+                                # Results found, break out of the wait loop
+                                break
+                            except:
+                                continue
+                        else:
+                            # Continue waiting if no indicators found
+                            print(f"⏳ Still waiting for results... ({i+1}s)")
+                            continue
+
+                        # If we get here, we found results and broke from the inner loop
+                        break
+
+                    # Now analyze the results
+                    sleep(2)  # Additional wait to ensure all elements are loaded
+
+                    # Scroll down to reveal all results
+                    driver.execute_script("window.scrollTo(0, document.body.scrollHeight / 2);")
+                    sleep(1)
+
+                    # Check for specific matching images section
+                    try:
+                        driver.find_element(By.XPATH, "//div[contains(text(), 'Pages that include matching images')]")
+                        print("✅ Match section found!")
+                        result.update({"match_found": True, "status": "⚠️ Image match found! This profile picture exists elsewhere online.", "score": 1})
+                    except:
+                        try:
+                            # Check for "visually similar" section
+                            driver.find_element(By.XPATH, "//div[contains(text(), 'Visually similar images')]")
+                            similar_count = len(driver.find_elements(By.XPATH, "//div[contains(@class, 'isv-r')]"))
+
+                            if similar_count > 5:
+                                print(f"✅ Found {similar_count} similar images")
+                                result.update({"match_found": True, "status": f"⚠️ Found {similar_count} similar images online, possibly a stock or AI-generated image.", "score": 0.5})
+                            else:
+                                print("✅ Only a few similar images found")
+                                result.update({"status": "✅ No exact matches found, only a few similar images.", "score": 0})
+                        except:
+                            try:
+                                # Check for "no other sizes" message indicating unique image
+                                driver.find_element(By.XPATH, "//div[contains(text(), 'No other sizes of this image found')]")
+                                print("✅ No matches found")
+                                result.update({"status": "✅ No image matches found. This appears to be a unique photo.", "score": 0})
+                            except:
+                                # Couldn't determine result confidently
+                                print("⚠️ Could not clearly determine search results")
+                                result.update({"status": "ℹ️ Could not confidently determine if this image exists elsewhere online.", "score": 0.3})
+                else:
+                    print("❌ Could not find upload input element")
+                    result.update({"status": "❌ Failed to upload image for search.", "score": 0})
+
+            except Exception as upload_error:
+                print(f"❌ Error during file upload: {upload_error}")
+                result.update({"status": f"❌ Error during image upload: {str(upload_error)}", "score": 0})
+
+        except Exception as search_error:
+            print(f"❌ Error during reverse search: {search_error}")
+            result.update({"status": f"❌ Error during search: {str(search_error)}", "score": 0})
 
         driver.quit()
+        print(f"🏁 Browser closed, reverse image search completed: {result}")
         result_holder["result"] = result
-        print(f"🏁 Reverse image search completed: {result}")
 
     except WebDriverException as e:
         print(f"❌ Selenium WebDriver error: {e}")
-        result_holder["result"] = {"match_found": False, "status": f"Selenium error: {e}", "score": 0}
+        result_holder["result"] = {"match_found": False, "status": f"❌ Browser automation error: {str(e)}", "score": 0}
     except Exception as e:
         print(f"❌ Reverse image search error: {e}")
-        result_holder["result"] = {"match_found": False, "status": f"Error: {e}", "score": 0}
-    finally:
-        try:
-            if 'driver' in locals() and driver:
-                driver.quit()
-                print("🧹 WebDriver closed")
-        except Exception as e:
-            print(f"❌ Error closing WebDriver: {e}")
+        result_holder["result"] = {"match_found": False, "status": f"❌ Error: {str(e)}", "score": 0}
+
 
 # --- Extract features for ML model ---
 def extract_ml_features(profile):
@@ -579,16 +753,7 @@ def setup_app():
 </body>
 </html>''')
 
-if __name__ == '__main__':
-    setup_app()
 
-    # Create and start browser opening thread
-    browser_thread = threading.Thread(target=open_browser)
-    browser_thread.daemon = True
-    browser_thread.start()
-
-    print("🚀 Starting web server...")
-    app.run(debug=True, use_reloader=False)  # Added use_reloader=False to prevent double browser opening
 
 # Open browser in a separate thread after small delay
 def open_browser():
@@ -612,3 +777,15 @@ def open_browser():
             print(f"✅ Browser opened using system command at {url}")
         except Exception as e2:
             print(f"❌ Failed to open browser: {e2}")
+
+
+if __name__ == '__main__':
+    setup_app()
+
+    # Create and start browser opening thread
+    browser_thread = threading.Thread(target=open_browser)
+    browser_thread.daemon = True
+    browser_thread.start()
+
+    print("🚀 Starting web server...")
+    app.run(debug=True, use_reloader=False)  # Added use_reloader=False to prevent double browser opening
